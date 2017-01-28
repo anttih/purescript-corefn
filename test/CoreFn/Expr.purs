@@ -137,7 +137,7 @@ testLiterals = do
 
     expectSuccess description (readLiteralJSON json) \x ->
       assertEqual x $ ArrayLiteral
-        [ Literal unit (StringLiteral "Hello world!")
+        [ Literal (StringLiteral "Hello world!")
         ]
 
   -- |
@@ -163,7 +163,7 @@ testLiterals = do
 
     expectSuccess description (readLiteralJSON json) \x ->
       assertEqual x $ ObjectLiteral
-        [ Tuple "hello" (Literal unit (StringLiteral "world!"))
+        [ Tuple "hello" (Literal (StringLiteral "world!"))
         ]
 
   -- |
@@ -212,7 +212,7 @@ testExpr = do
     """
 
     expectSuccess description (readExprJSON json) \x ->
-      assertEqual x (Literal unit (StringLiteral "Hello world!"))
+      assertEqual x (Literal (StringLiteral "Hello world!"))
 
   -- |
   -- Abs
@@ -234,8 +234,8 @@ testExpr = do
     expectSuccess description (readExprJSON json) \x -> do
       let ident = Ident "x"
       let qualified = Qualified Nothing (Ident "x")
-      let var = Var unit qualified
-      assertEqual x (Abs unit ident var)
+      let var = Var qualified
+      assertEqual x (Abs ident var)
 
   -- |
   -- App
@@ -263,9 +263,9 @@ testExpr = do
     expectSuccess description (readExprJSON json) \x -> do
       let moduleName = Just (ModuleName "Control.Monad.Eff.Console")
       let qualified = Qualified moduleName (Ident "log")
-      let var = Var unit qualified
-      let literal = Literal unit (StringLiteral "Hello world!")
-      assertEqual x (App unit var literal)
+      let var = Var qualified
+      let literal = Literal (StringLiteral "Hello world!")
+      assertEqual x (App var literal)
 
   -- |
   -- Var
@@ -283,7 +283,7 @@ testExpr = do
     expectSuccess description (readExprJSON json) \x -> do
       let moduleName = Just (ModuleName "Control.Monad.Eff.Console")
       let qualified = Qualified moduleName (Ident "log")
-      assertEqual x (Var unit qualified)
+      assertEqual x (Var qualified)
 
   -- |
   -- Unknown
@@ -357,9 +357,9 @@ testBindings = do
       let ident = Ident "main"
       let moduleName = Just (ModuleName "Control.Monad.Eff.Console")
       let qualified = Qualified moduleName (Ident "log")
-      let var = Var unit qualified
-      let literal = Literal unit (StringLiteral "Hello world!")
-      let app = App unit var literal
+      let var = Var qualified
+      let literal = Literal (StringLiteral "Hello world!")
+      let app = App var literal
       let binding = Tuple (Tuple unit ident) app
       assertEqual x (Bind [binding])
 
@@ -408,19 +408,19 @@ testBindings = do
       let fIdent = Ident "f"
       let fModuleName = Just (ModuleName "Example")
       let fQualified = Qualified fModuleName (Ident "g")
-      let fAppVar1 = Var unit fQualified
-      let fAppVar2 = Var unit (Qualified Nothing (Ident "x"))
-      let fApp = App unit fAppVar1 fAppVar2
-      let fAbs = Abs unit (Ident "x") fApp
+      let fAppVar1 = Var fQualified
+      let fAppVar2 = Var (Qualified Nothing (Ident "x"))
+      let fApp = App fAppVar1 fAppVar2
+      let fAbs = Abs  (Ident "x") fApp
       let fBinding = Tuple (Tuple unit fIdent) fAbs
 
       let gIdent = Ident "g"
       let gModuleName = Just (ModuleName "Example")
       let gQualified = Qualified gModuleName (Ident "f")
-      let gAppVar1 = Var unit gQualified
-      let gAppVar2 = Var unit (Qualified Nothing (Ident "x"))
-      let gApp = App unit gAppVar1 gAppVar2
-      let gAbs = Abs unit (Ident "x") gApp
+      let gAppVar1 = Var gQualified
+      let gAppVar2 = Var (Qualified Nothing (Ident "x"))
+      let gApp = App gAppVar1 gAppVar2
+      let gAbs = Abs (Ident "x") gApp
       let gBinding = Tuple (Tuple unit gIdent) gAbs
 
       assertEqual x (Bind [fBinding, gBinding])
