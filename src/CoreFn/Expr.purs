@@ -4,105 +4,24 @@
 module CoreFn.Expr
   ( Bind(..)
   , Expr(..)
-  , Literal(..)
+  , CaseAlternative(..)
+  , Guard
   , readBindJSON
   , readExprJSON
-  , readLiteralJSON
   ) where
 
 import Prelude
-import Data.Foreign.Keys as K
+import Data.Foreign (F, Foreign, ForeignError(..), fail, parseJSON, readString)
+import Data.Foreign.Class (class IsForeign, read, readProp)
+import Data.Traversable (traverse)
+import Data.Tuple (Tuple(..))
+import Data.Generic (class Generic, gShow)
+
 import CoreFn.Ident (Ident(..), readIdent)
 import CoreFn.Names (Qualified)
 import CoreFn.Util (objectProps)
-import Data.Either (Either(..))
-import Data.Generic (class Generic, gShow)
-import Data.Foreign (F, Foreign, ForeignError(..), fail, parseJSON, readArray, readBoolean, readChar, readInt, readNumber, readString)
-import Data.Foreign.Class (class IsForeign, read, readProp)
-import Data.Foreign.Index (prop)
-import Data.Traversable (sequence, traverse)
-import Data.Tuple (Tuple(..))
-
--- |
--- Data type for literal values. Parameterised so it can be used for Exprs and
--- Binders.
---
-data Literal a
-  -- |
-  -- A numeric literal
-  --
-  = NumericLiteral (Either Int Number)
-  -- |
-  -- A string literal
-  --
-  | StringLiteral String
-  -- |
-  -- A character literal
-  --
-  | CharLiteral Char
-  -- |
-  -- A boolean literal
-  --
-  | BooleanLiteral Boolean
-  -- |
-  -- An array literal
-  --
-  | ArrayLiteral (Array a)
-  -- |
-  -- An object literal
-  --
-  | ObjectLiteral (Array (Tuple String a))
-
-derive instance eqLiteral :: Eq a => Eq (Literal a)
-derive instance ordLiteral :: Ord a => Ord (Literal a)
-derive instance genericLiteral :: Generic a => Generic (Literal a)
-
-instance showLiteral :: Generic a => Show (Literal a) where
-  show = gShow
-
-instance isForeignLiteral :: IsForeign a => IsForeign (Literal a) where
-  read x = do
-    label <- readProp 0 x >>= readString
-    readLiteral' label x
-
-    where
-
-    readValues :: Array Foreign -> F (Array a)
-    readValues = traverse read
-
-    readPair :: Foreign -> String -> F (Tuple String a)
-    readPair obj key = Tuple key <$> (prop key obj >>= read)
-
-    readPairs :: Foreign -> Array String -> F (Array (Tuple String a))
-    readPairs obj = sequence <<< (map <<< readPair) obj
-
-    readLiteral' :: String -> Foreign -> F (Literal a)
-    readLiteral' "IntLiteral" v = do
-      value <- readProp 1 v
-      NumericLiteral <$> Left <$> readInt value
-    readLiteral' "NumberLiteral" v = do
-      value <- readProp 1 v
-      NumericLiteral <$> Right <$> readNumber value
-    readLiteral' "StringLiteral" v = do
-      value <- readProp 1 v
-      StringLiteral <$> readString value
-    readLiteral' "CharLiteral" v = do
-      value <- readProp 1 v
-      CharLiteral <$> readChar value
-    readLiteral' "BooleanLiteral" v = do
-      value <- readProp 1 v
-      BooleanLiteral <$> readBoolean value
-    readLiteral' "ArrayLiteral" v = do
-      array <- readProp 1 v >>= readArray
-      ArrayLiteral <$> readValues array
-    readLiteral' "ObjectLiteral" v = do
-      obj <- readProp 1 v
-      keys <- K.keys obj
-      ObjectLiteral <$> readPairs obj keys
-    readLiteral' label _ = fail $ ForeignError $ "Unknown literal: " <> label
-
-readLiteralJSON :: String -> F (Literal Expr)
-readLiteralJSON = parseJSON >=> read
+import CoreFn.Literals (Literal)
+import CoreFn.Binders (Binder)
 
 -- |
 -- Data type for expressions and terms
@@ -124,6 +43,10 @@ data Expr
   -- Variable
   --
   | Var (Qualified Ident)
+  -- |
+  -- Case expression
+  --
+  | Case (Array Expr) (Array CaseAlternative)
 
 derive instance eqExpr :: Eq Expr
 derive instance ordExpr :: Ord Expr
@@ -152,10 +75,32 @@ instance isForeignExpr :: IsForeign Expr where
     readExpr' "Var" y = do
       value <- readProp 1 y
       Var <$> read value
+    readExpr' "Case" y = Case <$> readProp 1 y <*> readProp 2 y
     readExpr' label _ = fail $ ForeignError $ "Unknown expression: " <> label
 
 readExprJSON :: String -> F Expr
 readExprJSON = parseJSON >=> read
+
+type Guard = Expr
+
+newtype CaseAlternative = CaseAlternative
+  { binders :: Array Binder
+  --, result :: Either (Array (Tuple Guard Expr)) Expr
+  , result :: Expr
+  }
+
+derive instance eqCaseAlternative :: Eq CaseAlternative
+derive instance ordCaseAlternative :: Ord CaseAlternative
+derive instance genericCaseAlternative :: Generic CaseAlternative
+
+instance showCaseAlternative :: Show CaseAlternative where
+  show = gShow
+
+instance isForeignCaseAlternative :: IsForeign CaseAlternative where
+  read x = do
+    binders <- readProp 0 x
+    result <- readProp 1 x
+    pure $ CaseAlternative { binders, result }
 
 -- |
 --  A let or module binding.

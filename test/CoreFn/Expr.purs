@@ -8,15 +8,20 @@ import Prelude
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Console (log, CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
-import CoreFn.Expr (Bind(..), Expr(..), Literal(..), readBindJSON, readExprJSON, readLiteralJSON)
+import CoreFn.Expr (Bind(..), Expr(..), CaseAlternative(..), readBindJSON, readExprJSON)
 import CoreFn.Ident (Ident(..))
 import CoreFn.Names (ModuleName(..), Qualified(..))
+import CoreFn.Binders (Binder(..))
+import CoreFn.Literals (Literal(..), readLiteralJSON)
+import Data.Foreign (F, ForeignError(..))
 import Data.Either (Either(..))
-import Data.Foreign (ForeignError(..))
 import Data.List.NonEmpty (singleton)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
 import Test.Util (assertEqual, expectFailure, expectSuccess)
+
+readLiteralJsonExpr :: String -> F (Literal Expr)
+readLiteralJsonExpr = readLiteralJSON
 
 testLiterals :: forall e. Eff (console :: CONSOLE, err :: EXCEPTION | e) Unit
 testLiterals = do
@@ -47,7 +52,7 @@ testLiterals = do
       ]
     """
 
-    expectSuccess description (readLiteralJSON json) \x ->
+    expectSuccess description (readLiteralJsonExpr json) \x ->
       assertEqual x (NumericLiteral (Left 42))
 
   -- |
@@ -63,7 +68,7 @@ testLiterals = do
       ]
     """
 
-    expectSuccess description (readLiteralJSON json) \x ->
+    expectSuccess description (readLiteralJsonExpr json) \x ->
       assertEqual x (NumericLiteral (Right 3.14))
 
   -- |
@@ -79,7 +84,7 @@ testLiterals = do
       ]
     """
 
-    expectSuccess description (readLiteralJSON json) \x ->
+    expectSuccess description (readLiteralJsonExpr json) \x ->
       assertEqual x (StringLiteral "Hello World!")
 
   -- |
@@ -95,7 +100,7 @@ testLiterals = do
       ]
     """
 
-    expectSuccess description (readLiteralJSON json) \x ->
+    expectSuccess description (readLiteralJsonExpr json) \x ->
       assertEqual x (CharLiteral 'a')
 
   -- |
@@ -111,7 +116,7 @@ testLiterals = do
       ]
     """
 
-    expectSuccess description (readLiteralJSON json) \x ->
+    expectSuccess description (readLiteralJsonExpr json) \x ->
       assertEqual x (BooleanLiteral true)
 
   -- |
@@ -135,7 +140,7 @@ testLiterals = do
       ]
     """
 
-    expectSuccess description (readLiteralJSON json) \x ->
+    expectSuccess description (readLiteralJsonExpr json) \x ->
       assertEqual x $ ArrayLiteral
         [ Literal (StringLiteral "Hello world!")
         ]
@@ -161,7 +166,7 @@ testLiterals = do
       ]
     """
 
-    expectSuccess description (readLiteralJSON json) \x ->
+    expectSuccess description (readLiteralJsonExpr json) \x ->
       assertEqual x $ ObjectLiteral
         [ Tuple "hello" (Literal (StringLiteral "world!"))
         ]
@@ -179,7 +184,7 @@ testLiterals = do
       ]
     """
 
-    expectFailure description (readLiteralJSON json) \x ->
+    expectFailure description (readLiteralJsonExpr json) \x ->
       assertEqual x (singleton (ForeignError "Unknown literal: SomeLiteral"))
 
 testExpr :: forall e. Eff (console :: CONSOLE, err :: EXCEPTION | e) Unit
@@ -192,6 +197,9 @@ testExpr = do
   testAppExpr
   testVarExpr
   testUnknownExpr
+  testCaseExpr
+  testCaseNullBinder
+  testCaseVarBinder
 
   where
 
@@ -306,6 +314,142 @@ testExpr = do
 
     expectFailure description (readExprJSON json) \x ->
       assertEqual x (singleton (ForeignError "Unknown expression: SomeExpression"))
+
+  
+  testCaseNullBinder = do
+    let description = "Case expression with null binder"
+
+    let json = """
+      [
+        "Case",
+        [["Var","b"]],
+        [
+          [
+            ["NullBinder"],
+            ["Literal",["IntLiteral",1]]
+          ]
+        ]
+      ]
+    """
+
+    expectSuccess description (readExprJSON json)	\x -> do
+      let var = Var (Qualified Nothing (Ident "b"))
+      let alt = CaseAlternative { binders: [NullBinder], result: (Literal (NumericLiteral (Left 1))) }
+      --let b1 = CaseAlternative { binders: [litBinderT], result: Right (Literal (NumericLiteral (Left 1))) }
+      --let b2 = CaseAlternative { binders: [litBinderF], result: Right (Literal (NumericLiteral (Left 2))) }
+      assertEqual x (Case [var] [alt])
+
+  testCaseExpr = do
+    let description = "Case expression with literal binders"
+
+    let json = """
+      [
+        "Case",
+        [
+          ["Var","b"]],
+          [
+            [
+              [["LiteralBinder",["BooleanLiteral",true]]],
+              ["Literal",["IntLiteral",1]]
+            ],
+            [
+              [["LiteralBinder",["BooleanLiteral",false]]],
+              ["Literal",["IntLiteral",2]]
+            ]
+          ]
+      ]
+    """
+
+    expectSuccess description (readExprJSON json)	\x -> do
+      let var = Var (Qualified Nothing (Ident "b"))
+      let litBinderT = LiteralBinder (BooleanLiteral true)
+      let litBinderF = LiteralBinder (BooleanLiteral false)
+      let b1 = CaseAlternative { binders: [litBinderT], result: (Literal (NumericLiteral (Left 1))) }
+      let b2 = CaseAlternative { binders: [litBinderF], result: (Literal (NumericLiteral (Left 2))) }
+      assertEqual x (Case [var] [b1, b2])
+
+  testCaseVarBinder = do
+    let description = "Case expression with var binders"
+
+    let json = """
+      [
+        "Case",
+        [["Var", "v"]],
+        [
+          [
+            [["LiteralBinder", ["IntLiteral", 1]]],
+            ["Literal", ["IntLiteral", 1]]
+          ],
+          [
+            [["VarBinder", "i"]],
+            ["Var", "i"]
+          ]
+        ]
+      ]
+    """
+
+    expectSuccess description (readExprJSON json)	\x -> do
+      let var = Var (Qualified Nothing (Ident "i"))
+      let litBinder = LiteralBinder (NumericLiteral (Left 1))
+      let varBinder = VarBinder (Ident "i")
+      let b1 = CaseAlternative { binders: [litBinder], result: (Literal (NumericLiteral (Left 1))) }
+      let b2 = CaseAlternative { binders: [varBinder], result: var }
+      assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b1, b2])
+
+  testCaseConstructorBinder = do
+    let description = "Case expression with constructor binder"
+
+    let json = """
+        [
+          "Case",
+          [["Var", "v"]],
+          [
+              [
+                  [
+                    ["ConstructorBinder", "Module.Foo", "Module.Bar", []]
+                  ],
+                  ["Literal", ["IntLiteral", 1]]
+              ],
+              [
+                  [
+                      ["ConstructorBinder", "Module.Foo", "Module.Baz", []]
+                  ],
+                  ["Literal", ["IntLiteral", 2]]
+              ]
+          ]
+      ]
+    """
+
+    expectSuccess description (readExprJSON json)	\x -> do
+      let var = Var (Qualified Nothing (Ident "i"))
+      let litBinder = LiteralBinder (NumericLiteral (Left 1))
+      let varBinder = VarBinder (Ident "i")
+      let b1 = CaseAlternative { binders: [litBinder], result: (Literal (NumericLiteral (Left 1))) }
+      let b2 = CaseAlternative { binders: [varBinder], result: var }
+      assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b1, b2])
+
+  --testCaseExpr = do
+  --  let description = "Case expression with literal binders"
+
+  --  let json = """
+  --    [
+  --      "Case",
+  --      [["Var","v"],["Var","v1"]],
+  --      [[[["LiteralBinder",["BooleanLiteral",true]],["VarBinder","i"]],[[["App",["App",["App",["Var","Data.Eq.eq"],["Var","Data.Eq.eqInt"]],["Var","i"]],["Literal",["IntLiteral",0]]],["Literal",["IntLiteral",1]]]]]
+  --    ]
+  --    ]
+  --  """
+
+  --  expectSuccess description (readExprJSON json)	\x -> do
+  --    let var = Var (Qualified Nothing (Ident "b"))
+  --    let litBinderT = LiteralBinder (BooleanLiteral true)
+  --    let litBinderF = LiteralBinder (BooleanLiteral false)
+  --    let b1 = CaseAlternative { binders: [litBinderT], result: (Literal (NumericLiteral (Left 1))) }
+  --    let b2 = CaseAlternative { binders: [litBinderF], result: (Literal (NumericLiteral (Left 2))) }
+  --    --let b1 = CaseAlternative { binders: [litBinderT], result: Right (Literal (NumericLiteral (Left 1))) }
+  --    --let b2 = CaseAlternative { binders: [litBinderF], result: Right (Literal (NumericLiteral (Left 2))) }
+  --    assertEqual x (Case [var] [b1, b2])
+
 
 testBindings :: forall e. Eff (console :: CONSOLE, err :: EXCEPTION | e) Unit
 testBindings = do
