@@ -176,12 +176,12 @@ testModule = do
     expectSuccess description (readModuleJSON json) \(Module x) -> do
       let xIdent = Ident "x"
       let xLiteral = Literal (StringLiteral "x")
-      let xBinding = Tuple (Tuple unit xIdent) xLiteral
+      let xBinding = Tuple xIdent xLiteral
       let xDecl = Bind [ xBinding ]
 
       let yIdent = Ident "y"
       let yLiteral = Literal (StringLiteral "y")
-      let yBinding = Tuple (Tuple unit yIdent) yLiteral
+      let yBinding = Tuple yIdent yLiteral
       let yDecl = Bind [ yBinding ]
 
       assertEqual x.moduleDecls [ xDecl, yDecl ]

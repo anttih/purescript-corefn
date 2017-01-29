@@ -5,10 +5,8 @@ module CoreFn.Expr
   ( Bind(..)
   , Expr(..)
   , Literal(..)
-  , readBind
   , readBindJSON
   , readExprJSON
-  , readLiteral
   , readLiteralJSON
   ) where
 
@@ -65,49 +63,49 @@ instance showLiteral :: Show a => Show (Literal a) where
   show (ArrayLiteral a) = "(ArrayLiteral " <> show a <> ")"
   show (ObjectLiteral o) = "(ObjectLiteral" <> show o <> ")"
 
-readLiteral :: Foreign -> F (Literal Expr)
-readLiteral x = do
-  label <- readProp 0 x >>= readString
-  readLiteral' label x
+instance isForeignLiteral :: IsForeign a => IsForeign (Literal a) where
+  read x = do
+    label <- readProp 0 x >>= readString
+    readLiteral' label x
 
-  where
+    where
 
-  readValues :: Array Foreign -> F (Array Expr)
-  readValues = traverse read
+    readValues :: Array Foreign -> F (Array a)
+    readValues = traverse read
 
-  readPair :: Foreign -> String -> F (Tuple String Expr)
-  readPair obj key = Tuple key <$> (prop key obj >>= read)
+    readPair :: Foreign -> String -> F (Tuple String a)
+    readPair obj key = Tuple key <$> (prop key obj >>= read)
 
-  readPairs :: Foreign -> Array String -> F (Array (Tuple String Expr))
-  readPairs obj = sequence <<< (map <<< readPair) obj
+    readPairs :: Foreign -> Array String -> F (Array (Tuple String a))
+    readPairs obj = sequence <<< (map <<< readPair) obj
 
-  readLiteral' :: String -> Foreign -> F (Literal Expr)
-  readLiteral' "IntLiteral" v = do
-    value <- readProp 1 v
-    NumericLiteral <$> Left <$> readInt value
-  readLiteral' "NumberLiteral" v = do
-    value <- readProp 1 v
-    NumericLiteral <$> Right <$> readNumber value
-  readLiteral' "StringLiteral" v = do
-    value <- readProp 1 v
-    StringLiteral <$> readString value
-  readLiteral' "CharLiteral" v = do
-    value <- readProp 1 v
-    CharLiteral <$> readChar value
-  readLiteral' "BooleanLiteral" v = do
-    value <- readProp 1 v
-    BooleanLiteral <$> readBoolean value
-  readLiteral' "ArrayLiteral" v = do
-    array <- readProp 1 v >>= readArray
-    ArrayLiteral <$> readValues array
-  readLiteral' "ObjectLiteral" v = do
-    obj <- readProp 1 v
-    keys <- K.keys obj
-    ObjectLiteral <$> readPairs obj keys
-  readLiteral' label _ = fail $ ForeignError $ "Unknown literal: " <> label
+    readLiteral' :: String -> Foreign -> F (Literal a)
+    readLiteral' "IntLiteral" v = do
+      value <- readProp 1 v
+      NumericLiteral <$> Left <$> readInt value
+    readLiteral' "NumberLiteral" v = do
+      value <- readProp 1 v
+      NumericLiteral <$> Right <$> readNumber value
+    readLiteral' "StringLiteral" v = do
+      value <- readProp 1 v
+      StringLiteral <$> readString value
+    readLiteral' "CharLiteral" v = do
+      value <- readProp 1 v
+      CharLiteral <$> readChar value
+    readLiteral' "BooleanLiteral" v = do
+      value <- readProp 1 v
+      BooleanLiteral <$> readBoolean value
+    readLiteral' "ArrayLiteral" v = do
+      array <- readProp 1 v >>= readArray
+      ArrayLiteral <$> readValues array
+    readLiteral' "ObjectLiteral" v = do
+      obj <- readProp 1 v
+      keys <- K.keys obj
+      ObjectLiteral <$> readPairs obj keys
+    readLiteral' label _ = fail $ ForeignError $ "Unknown literal: " <> label
 
 readLiteralJSON :: String -> F (Literal Expr)
-readLiteralJSON = parseJSON >=> readLiteral
+readLiteralJSON = parseJSON >=> read
 
 -- |
 -- Data type for expressions and terms
@@ -147,9 +145,7 @@ instance isForeignExpr :: IsForeign Expr where
     where
 
     readExpr' :: String -> Foreign -> F Expr
-    readExpr' "Literal" y = do
-      value <- readProp 1 y
-      Literal <$> readLiteral value
+    readExpr' "Literal" y = Literal <$> readProp 1 y
     readExpr' "Abs" y = do
       ident <- readProp 1 y
       expr <- readProp 2 y
@@ -169,29 +165,29 @@ readExprJSON = parseJSON >=> read
 -- |
 --  A let or module binding.
 --
-data Bind a = Bind (Array (Tuple (Tuple a Ident) Expr))
+data Bind = Bind (Array (Tuple Ident Expr))
 
-derive instance eqBind :: Eq a => Eq (Bind a)
-derive instance ordBind :: Ord a => Ord (Bind a)
+derive instance eqBind :: Eq Bind
+derive instance ordBind :: Ord Bind
 
-instance showBind :: Show a => Show (Bind a) where
+instance showBind :: Show Bind where
   show (Bind x) = "(Bind " <> show x <> ")"
 
-readBind :: Foreign -> F (Bind Unit)
-readBind x = do
-  pairs <- objectProps x
-  bindings <- traverse fromPair pairs
-  pure $ Bind bindings
+instance isForeignBind :: IsForeign Bind where
+  read x = do
+    pairs <- objectProps x
+    bindings <- traverse fromPair pairs
+    pure $ Bind bindings
 
-  where
+    where
 
-  fromPair
-    :: { key :: String, value :: Foreign }
-    -> F (Tuple (Tuple Unit Ident) Expr)
-  fromPair pair = do
-    expr <- read pair.value
-    let ident = Ident pair.key
-    pure $ Tuple (Tuple unit ident) expr
+    fromPair
+      :: { key :: String, value :: Foreign }
+      -> F (Tuple Ident Expr)
+    fromPair pair = do
+      expr <- read pair.value
+      let ident = Ident pair.key
+      pure $ Tuple ident expr
 
-readBindJSON :: String -> F (Bind Unit)
-readBindJSON = parseJSON >=> readBind
+readBindJSON :: String -> F Bind
+readBindJSON = parseJSON >=> read

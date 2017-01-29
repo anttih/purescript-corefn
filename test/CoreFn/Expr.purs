@@ -360,7 +360,7 @@ testBindings = do
       let var = Var qualified
       let literal = Literal (StringLiteral "Hello world!")
       let app = App var literal
-      let binding = Tuple (Tuple unit ident) app
+      let binding = Tuple ident app
       assertEqual x (Bind [binding])
 
   -- |
@@ -412,7 +412,7 @@ testBindings = do
       let fAppVar2 = Var (Qualified Nothing (Ident "x"))
       let fApp = App fAppVar1 fAppVar2
       let fAbs = Abs  (Ident "x") fApp
-      let fBinding = Tuple (Tuple unit fIdent) fAbs
+      let fBinding = Tuple fIdent fAbs
 
       let gIdent = Ident "g"
       let gModuleName = Just (ModuleName "Example")
@@ -421,6 +421,6 @@ testBindings = do
       let gAppVar2 = Var (Qualified Nothing (Ident "x"))
       let gApp = App gAppVar1 gAppVar2
       let gAbs = Abs (Ident "x") gApp
-      let gBinding = Tuple (Tuple unit gIdent) gAbs
+      let gBinding = Tuple gIdent gAbs
 
       assertEqual x (Bind [fBinding, gBinding])

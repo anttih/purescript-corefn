@@ -5,12 +5,12 @@ module CoreFn.Module
   ) where
 
 import Prelude
-import CoreFn.Expr (Bind, readBind)
+import CoreFn.Expr (Bind)
 import CoreFn.Ident (Ident, readIdent)
 import CoreFn.Names (ModuleName(..), readModuleName)
 import CoreFn.Util (objectProp)
 import Data.Foreign (F, Foreign, parseJSON, readArray, readString)
-import Data.Foreign.Class (readProp)
+import Data.Foreign.Class (read, readProp)
 import Data.Foreign.Index (class Index, prop)
 import Data.Traversable (traverse)
 
@@ -19,7 +19,7 @@ import Data.Traversable (traverse)
 --
 data Module a = Module
   { builtWith :: String
-  , moduleDecls :: Array (Bind a)
+  , moduleDecls :: Array Bind
   , moduleExports :: Array Ident
   , moduleForeign :: Array Ident
   , moduleImports :: Array ModuleName
@@ -49,7 +49,7 @@ readModule x = do
   o <- objectProp "Module name not found" x
 
   builtWith     <- prop "builtWith" o.value >>= readString
-  moduleDecls   <- traverseArrayProp "decls"   o.value readBind
+  moduleDecls   <- traverseArrayProp "decls"   o.value read
   moduleExports <- traverseArrayProp "exports" o.value readIdent
   moduleForeign <- traverseArrayProp "foreign" o.value readIdent
   moduleImports <- traverseArrayProp "imports" o.value readModuleName
