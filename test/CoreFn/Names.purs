@@ -77,7 +77,7 @@ testNames = do
       "log"
     """
 
-    expectSuccess description (readQualifiedJSON Ident json) \(Qualified x y) -> do
+    expectSuccess description (readQualifiedJSON json) \(Qualified x y) -> do
       assertEqual x Nothing
       assertEqual y (Ident "log")
 
@@ -88,7 +88,7 @@ testNames = do
       "Control.Monad.Console.Eff.log"
     """
 
-    expectSuccess description (readQualifiedJSON Ident json) \(Qualified x y) -> do
+    expectSuccess description (readQualifiedJSON json) \(Qualified x y) -> do
       assertEqual x (Just $ ModuleName "Control.Monad.Console.Eff")
       assertEqual y (Ident "log")
 
@@ -99,7 +99,7 @@ testNames = do
       "bind"
     """
 
-    expectSuccess description (readQualifiedJSON OpName json) \(Qualified x y) -> do
+    expectSuccess description (readQualifiedJSON json) \(Qualified x y) -> do
       assertEqual x Nothing
       assertEqual y (OpName "bind")
 
@@ -110,7 +110,7 @@ testNames = do
       "Control.Bind.bind"
     """
 
-    expectSuccess description (readQualifiedJSON OpName json) \(Qualified x y) -> do
+    expectSuccess description (readQualifiedJSON json) \(Qualified x y) -> do
       assertEqual x (Just $ ModuleName "Control.Bind")
       assertEqual y (OpName "bind")
 
@@ -121,7 +121,7 @@ testNames = do
       "Nothing"
     """
 
-    expectSuccess description (readQualifiedJSON ProperName json) \(Qualified x y) -> do
+    expectSuccess description (readQualifiedJSON json) \(Qualified x y) -> do
       assertEqual x Nothing
       assertEqual y (ProperName "Nothing")
 
@@ -132,6 +132,6 @@ testNames = do
       "Data.Maybe.Nothing"
     """
 
-    expectSuccess description (readQualifiedJSON ProperName json) \(Qualified x y) -> do
+    expectSuccess description (readQualifiedJSON json) \(Qualified x y) -> do
       assertEqual x (Just $ ModuleName "Data.Maybe")
       assertEqual y (ProperName "Nothing")

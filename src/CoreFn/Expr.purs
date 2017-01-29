@@ -13,7 +13,7 @@ module CoreFn.Expr
 import Prelude
 import Data.Foreign.Keys as K
 import CoreFn.Ident (Ident(..), readIdent)
-import CoreFn.Names (Qualified, readQualified)
+import CoreFn.Names (Qualified)
 import CoreFn.Util (objectProps)
 import Data.Either (Either(..), either)
 import Data.Foreign (F, Foreign, ForeignError(..), fail, parseJSON, readArray, readBoolean, readChar, readInt, readNumber, readString)
@@ -156,7 +156,7 @@ instance isForeignExpr :: IsForeign Expr where
       App <$> read expr1 <*> read expr2
     readExpr' "Var" y = do
       value <- readProp 1 y
-      Var <$> readQualified Ident value
+      Var <$> read value
     readExpr' label _ = fail $ ForeignError $ "Unknown expression: " <> label
 
 readExprJSON :: String -> F Expr

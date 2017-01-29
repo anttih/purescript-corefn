@@ -10,21 +10,17 @@ module CoreFn.Ident
 import Prelude
 import Data.Foreign (F, Foreign, parseJSON, readString)
 import Data.Generic (gShow, class Generic)
-import Data.Maybe (Maybe)
+import Data.Newtype (class Newtype)
 
-data Ident
-  -- |
-  -- An alphanumeric identifier
-  --
-  = Ident String
-  -- |
-  -- A generated name for an identifier
-  --
-  | GenIdent (Maybe String) Int
+-- |
+-- An alphanumeric identifier
+--
+newtype Ident = Ident String
 
 derive instance eqIdent :: Eq Ident
 derive instance genericIdent :: Generic Ident
 derive instance ordIdent :: Ord Ident
+derive instance newtypeIdent :: Newtype Ident _
 
 instance showIdent :: Show Ident where
   show = gShow
