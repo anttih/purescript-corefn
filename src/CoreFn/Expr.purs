@@ -15,7 +15,8 @@ import Data.Foreign.Keys as K
 import CoreFn.Ident (Ident(..), readIdent)
 import CoreFn.Names (Qualified)
 import CoreFn.Util (objectProps)
-import Data.Either (Either(..), either)
+import Data.Either (Either(..))
+import Data.Generic (class Generic, gShow)
 import Data.Foreign (F, Foreign, ForeignError(..), fail, parseJSON, readArray, readBoolean, readChar, readInt, readNumber, readString)
 import Data.Foreign.Class (class IsForeign, read, readProp)
 import Data.Foreign.Index (prop)
@@ -54,14 +55,10 @@ data Literal a
 
 derive instance eqLiteral :: Eq a => Eq (Literal a)
 derive instance ordLiteral :: Ord a => Ord (Literal a)
+derive instance genericLiteral :: Generic a => Generic (Literal a)
 
-instance showLiteral :: Show a => Show (Literal a) where
-  show (NumericLiteral e) = "(NumericLiteral " <> either show show e <> ")"
-  show (StringLiteral s) = "(StringLiteral " <> show s <> ")"
-  show (CharLiteral c) = "(CharLiteral " <> show c <> ")"
-  show (BooleanLiteral b) = "(BooleanLiteral " <> show b <> ")"
-  show (ArrayLiteral a) = "(ArrayLiteral " <> show a <> ")"
-  show (ObjectLiteral o) = "(ObjectLiteral" <> show o <> ")"
+instance showLiteral :: Generic a => Show (Literal a) where
+  show = gShow
 
 instance isForeignLiteral :: IsForeign a => IsForeign (Literal a) where
   read x = do
@@ -130,12 +127,10 @@ data Expr
 
 derive instance eqExpr :: Eq Expr
 derive instance ordExpr :: Ord Expr
+derive instance genericExpr :: Generic Expr
 
 instance showExpr :: Show Expr where
-  show (Literal x) = "(Literal " <> show x <> ")"
-  show (Abs x y) = "(Abs " <> show x <> " " <> show y <> ")"
-  show (App x y) = "(App " <> show x <> " " <> show y <> ")"
-  show (Var x) = "(Var " <> show x <> ")"
+  show = gShow
 
 instance isForeignExpr :: IsForeign Expr where
   read x = do
