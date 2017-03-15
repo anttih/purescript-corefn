@@ -338,8 +338,6 @@ testExpr = do
     expectSuccess description (readExprJSON json)	\x -> do
       let var = Var (Qualified Nothing (Ident "b"))
       let alt = CaseAlternative { binders: [NullBinder], result: (Literal (NumericLiteral (Left 1))) }
-      --let b1 = CaseAlternative { binders: [litBinderT], result: Right (Literal (NumericLiteral (Left 1))) }
-      --let b2 = CaseAlternative { binders: [litBinderF], result: Right (Literal (NumericLiteral (Left 2))) }
       assertEqual x (Case [var] [alt])
 
   testCaseExpr = do
