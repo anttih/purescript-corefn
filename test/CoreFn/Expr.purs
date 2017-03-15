@@ -203,6 +203,8 @@ testExpr = do
   testCaseConstructorBinder
   testCaseConstructorBinderArgs
   testCaseNamedBinder
+  testCaseWithGuard
+  testCaseWithMultipleGuards
 
   where
 
@@ -337,7 +339,8 @@ testExpr = do
 
     expectSuccess description (readExprJSON json)	\x -> do
       let var = Var (Qualified Nothing (Ident "b"))
-      let alt = CaseAlternative { binders: [NullBinder], result: (Literal (NumericLiteral (Left 1))) }
+      let alt = CaseAlternative { binders: [NullBinder]
+                                , result: Right (Literal (NumericLiteral (Left 1))) }
       assertEqual x (Case [var] [alt])
 
   testCaseExpr = do
@@ -365,8 +368,10 @@ testExpr = do
       let var = Var (Qualified Nothing (Ident "b"))
       let litBinderT = LiteralBinder (BooleanLiteral true)
       let litBinderF = LiteralBinder (BooleanLiteral false)
-      let b1 = CaseAlternative { binders: [litBinderT], result: (Literal (NumericLiteral (Left 1))) }
-      let b2 = CaseAlternative { binders: [litBinderF], result: (Literal (NumericLiteral (Left 2))) }
+      let b1 = CaseAlternative { binders: [litBinderT]
+                               , result: Right (Literal (NumericLiteral (Left 1))) }
+      let b2 = CaseAlternative { binders: [litBinderF]
+                               , result: Right (Literal (NumericLiteral (Left 2))) }
       assertEqual x (Case [var] [b1, b2])
 
   testCaseVarBinder = do
@@ -393,8 +398,9 @@ testExpr = do
       let var = Var (Qualified Nothing (Ident "i"))
       let litBinder = LiteralBinder (NumericLiteral (Left 1))
       let varBinder = VarBinder (Ident "i")
-      let b1 = CaseAlternative { binders: [litBinder], result: (Literal (NumericLiteral (Left 1))) }
-      let b2 = CaseAlternative { binders: [varBinder], result: var }
+      let b1 = CaseAlternative { binders: [litBinder]
+                               , result: Right (Literal (NumericLiteral (Left 1))) }
+      let b2 = CaseAlternative { binders: [varBinder], result: Right var }
       assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b1, b2])
 
   testCaseConstructorBinder = do
@@ -426,8 +432,10 @@ testExpr = do
       let typeName = (Qualified moduleName (ProperName "Foo"))
       let constBinder1 = ConstructorBinder typeName (Qualified moduleName (ProperName "Bar")) []
       let constBinder2 = ConstructorBinder typeName (Qualified moduleName (ProperName "Baz")) []
-      let b1 = CaseAlternative { binders: [constBinder1], result: (Literal (NumericLiteral (Left 1))) }
-      let b2 = CaseAlternative { binders: [constBinder2], result: (Literal (NumericLiteral (Left 2))) }
+      let b1 = CaseAlternative { binders: [constBinder1]
+                               , result: Right (Literal (NumericLiteral (Left 1))) }
+      let b2 = CaseAlternative { binders: [constBinder2]
+                               , result: Right (Literal (NumericLiteral (Left 2))) }
       assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b1, b2])
 
   testCaseConstructorBinderArgs = do
@@ -453,7 +461,8 @@ testExpr = do
       let typeName = (Qualified moduleName (ProperName "FooSum"))
       let args = [VarBinder (Ident "x"), VarBinder (Ident "y")]
       let constBinder1 = ConstructorBinder typeName (Qualified moduleName (ProperName "Two")) args
-      let b = CaseAlternative { binders: [constBinder1], result: (Literal (NumericLiteral (Left 1))) }
+      let b = CaseAlternative { binders: [constBinder1]
+                              , result: Right (Literal (NumericLiteral (Left 1))) }
       assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b])
 
   testCaseNamedBinder = do
@@ -484,9 +493,75 @@ testExpr = do
       let args = [VarBinder (Ident "i")]
       let constBinder = ConstructorBinder typeName (Qualified moduleName (ProperName "One")) args
       let namedBinder = NamedBinder (Ident "foo") constBinder
-      let b = CaseAlternative { binders: [namedBinder], result: (Var (Qualified Nothing (Ident "i"))) }
+      let b = CaseAlternative { binders: [namedBinder]
+                              , result: Right (Var (Qualified Nothing (Ident "i"))) }
       assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b])
 
+  testCaseWithGuard = do
+    let description = "Case expression with a guard"
+
+    let json = """
+      [
+        "Case",
+        [["Var","v"]],
+        [
+          [
+            ["NullBinder"],
+            [
+              [
+                ["Literal",["BooleanLiteral",true]],
+                ["Literal",["IntLiteral",1]]
+              ]
+            ]
+          ]
+        ]
+      ]
+    """
+
+    expectSuccess description (readExprJSON json)	\x -> do
+      let guards = [Tuple (Literal (BooleanLiteral true)) (Literal (NumericLiteral (Left 1)))]
+      let b = CaseAlternative { binders: [NullBinder]
+                              , result: Left guards }
+      assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b])
+
+  testCaseWithMultipleGuards = do
+    let description = "Case expression with multiple guards"
+
+    let json = """
+      [
+        "Case",
+        [["Var","i"]],
+        [
+          [
+            [["VarBinder","i1"]],
+            [
+              [
+                ["Literal",["BooleanLiteral",true]],
+                ["Literal",["IntLiteral",1]]
+              ],
+              [
+                ["Literal",["BooleanLiteral",false]],
+                ["Literal",["IntLiteral",2]]
+              ],
+              [
+                ["Var","Data.Boolean.otherwise"],
+                ["Literal",["IntLiteral",3]]
+              ]
+            ]
+          ]
+        ]
+      ]
+    """
+
+    expectSuccess description (readExprJSON json)	\x -> do
+      let moduleName = Just (ModuleName "Data.Boolean")
+      let guards = [ Tuple (Literal (BooleanLiteral true)) (Literal (NumericLiteral (Left 1)))
+                   , Tuple (Literal (BooleanLiteral false)) (Literal (NumericLiteral (Left 2)))
+                   , Tuple (Var (Qualified moduleName (Ident "otherwise"))) (Literal (NumericLiteral (Left 3)))
+                   ]
+      let b = CaseAlternative { binders: [VarBinder (Ident "i1")]
+                              , result: Left guards }
+      assertEqual x (Case [Var (Qualified Nothing (Ident "i"))] [b])
 
 testBindings :: forall e. Eff (console :: CONSOLE, err :: EXCEPTION | e) Unit
 testBindings = do

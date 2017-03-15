@@ -11,6 +11,8 @@ module CoreFn.Expr
   ) where
 
 import Prelude
+import Control.Alt ((<|>))
+import Data.Either (Either(..))
 import Data.Foreign (F, Foreign, ForeignError(..), fail, parseJSON, readString)
 import Data.Foreign.Class (class IsForeign, read, readProp)
 import Data.Traversable (traverse)
@@ -85,8 +87,7 @@ type Guard = Expr
 
 newtype CaseAlternative = CaseAlternative
   { binders :: Array Binder
-  --, result :: Either (Array (Tuple Guard Expr)) Expr
-  , result :: Expr
+  , result :: Either (Array (Tuple Guard Expr)) Expr
   }
 
 derive instance eqCaseAlternative :: Eq CaseAlternative
@@ -99,8 +100,17 @@ instance showCaseAlternative :: Show CaseAlternative where
 instance isForeignCaseAlternative :: IsForeign CaseAlternative where
   read x = do
     binders <- readProp 0 x
-    result <- readProp 1 x
+    result <- (Left <$> readGuards x) <|> (Right <$> readProp 1 x)
     pure $ CaseAlternative { binders, result }
+
+    where
+    readGuards :: Foreign -> F (Array (Tuple Guard Expr))
+    readGuards x' = do
+      xs <- readProp 1 x'
+      traverse fromPair xs
+
+    fromPair :: Foreign -> F (Tuple Guard Expr)
+    fromPair x' = Tuple <$> readProp 0 x' <*> readProp 1 x'
 
 -- |
 --  A let or module binding.
