@@ -10,7 +10,7 @@ import Control.Monad.Eff.Console (log, CONSOLE)
 import Control.Monad.Eff.Exception (EXCEPTION)
 import CoreFn.Expr (Bind(..), Expr(..), CaseAlternative(..), readBindJSON, readExprJSON)
 import CoreFn.Ident (Ident(..))
-import CoreFn.Names (ModuleName(..), Qualified(..))
+import CoreFn.Names (ModuleName(..), Qualified(..), ProperName(..))
 import CoreFn.Binders (Binder(..))
 import CoreFn.Literals (Literal(..), readLiteralJSON)
 import Data.Foreign (F, ForeignError(..))
@@ -200,6 +200,8 @@ testExpr = do
   testCaseExpr
   testCaseNullBinder
   testCaseVarBinder
+  testCaseConstructorBinder
+  testCaseConstructorBinderArgs
 
   where
 
@@ -412,7 +414,7 @@ testExpr = do
               ],
               [
                   [
-                      ["ConstructorBinder", "Module.Foo", "Module.Baz", []]
+                    ["ConstructorBinder", "Module.Foo", "Module.Baz", []]
                   ],
                   ["Literal", ["IntLiteral", 2]]
               ]
@@ -421,12 +423,40 @@ testExpr = do
     """
 
     expectSuccess description (readExprJSON json)	\x -> do
-      let var = Var (Qualified Nothing (Ident "i"))
-      let litBinder = LiteralBinder (NumericLiteral (Left 1))
-      let varBinder = VarBinder (Ident "i")
-      let b1 = CaseAlternative { binders: [litBinder], result: (Literal (NumericLiteral (Left 1))) }
-      let b2 = CaseAlternative { binders: [varBinder], result: var }
+      let moduleName = Just (ModuleName "Module")
+      let typeName = (Qualified moduleName (ProperName "Foo"))
+      let constBinder1 = ConstructorBinder typeName (Qualified moduleName (ProperName "Bar")) []
+      let constBinder2 = ConstructorBinder typeName (Qualified moduleName (ProperName "Baz")) []
+      let b1 = CaseAlternative { binders: [constBinder1], result: (Literal (NumericLiteral (Left 1))) }
+      let b2 = CaseAlternative { binders: [constBinder2], result: (Literal (NumericLiteral (Left 2))) }
       assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b1, b2])
+
+  testCaseConstructorBinderArgs = do
+    let description = "Case expression with constructor binder arguments"
+
+    let json = """
+      [
+        "Case",
+        [["Var","v"]],
+        [
+          [
+            [
+              ["ConstructorBinder","Module.FooSum","Module.Two",[["VarBinder","x"],["VarBinder","y"]]]
+            ],
+            ["Literal", ["IntLiteral",1]]
+          ]
+        ]
+      ]
+    """
+
+    expectSuccess description (readExprJSON json)	\x -> do
+      let moduleName = Just (ModuleName "Module")
+      let typeName = (Qualified moduleName (ProperName "FooSum"))
+      let args = [VarBinder (Ident "x"), VarBinder (Ident "y")]
+      let constBinder1 = ConstructorBinder typeName (Qualified moduleName (ProperName "Two")) args
+      let b = CaseAlternative { binders: [constBinder1], result: (Literal (NumericLiteral (Left 1))) }
+      assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b])
+
 
   --testCaseExpr = do
   --  let description = "Case expression with literal binders"

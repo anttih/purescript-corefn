@@ -41,7 +41,7 @@ instance showBinder :: Show Binder where
 
 instance isForeignBinder :: IsForeign Binder where
   read x = nullBinder x <|> nonNullBinder x
-  
+
     where
     nullBinder :: Foreign -> F Binder
     nullBinder x' = do
@@ -57,9 +57,9 @@ instance isForeignBinder :: IsForeign Binder where
       case label of
         "LiteralBinder" -> LiteralBinder <$> read value
         "VarBinder" -> VarBinder <$> readIdent value
-        --"ConstructorBinder" -> do
-        --  typeName <- readProp 1 x'
-        --  consName <- readProp 2 x'
-        --  args <- readProp 3 x'
-        --  ConstructorBinder <$> read typeName <*> readProp 2 x' <*> readProp 3 x'
+        "ConstructorBinder" -> do
+          typeName <- readProp 1 x'
+          consName <- readProp 2 x'
+          args <- readProp 3 x'
+          pure $ ConstructorBinder typeName consName args
         other -> fail $ ForeignError $ "Unknown binder: " <> other
