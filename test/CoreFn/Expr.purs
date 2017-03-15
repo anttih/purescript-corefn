@@ -458,29 +458,6 @@ testExpr = do
       assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b])
 
 
-  --testCaseExpr = do
-  --  let description = "Case expression with literal binders"
-
-  --  let json = """
-  --    [
-  --      "Case",
-  --      [["Var","v"],["Var","v1"]],
-  --      [[[["LiteralBinder",["BooleanLiteral",true]],["VarBinder","i"]],[[["App",["App",["App",["Var","Data.Eq.eq"],["Var","Data.Eq.eqInt"]],["Var","i"]],["Literal",["IntLiteral",0]]],["Literal",["IntLiteral",1]]]]]
-  --    ]
-  --    ]
-  --  """
-
-  --  expectSuccess description (readExprJSON json)	\x -> do
-  --    let var = Var (Qualified Nothing (Ident "b"))
-  --    let litBinderT = LiteralBinder (BooleanLiteral true)
-  --    let litBinderF = LiteralBinder (BooleanLiteral false)
-  --    let b1 = CaseAlternative { binders: [litBinderT], result: (Literal (NumericLiteral (Left 1))) }
-  --    let b2 = CaseAlternative { binders: [litBinderF], result: (Literal (NumericLiteral (Left 2))) }
-  --    --let b1 = CaseAlternative { binders: [litBinderT], result: Right (Literal (NumericLiteral (Left 1))) }
-  --    --let b2 = CaseAlternative { binders: [litBinderF], result: Right (Literal (NumericLiteral (Left 2))) }
-  --    assertEqual x (Case [var] [b1, b2])
-
-
 testBindings :: forall e. Eff (console :: CONSOLE, err :: EXCEPTION | e) Unit
 testBindings = do
   log ""
