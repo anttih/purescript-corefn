@@ -27,10 +27,10 @@ data Binder
     -- A binder which matches a data constructor
     --
     | ConstructorBinder (Qualified ProperName) (Qualified ProperName) (Array Binder)
-    -- -- |
-    -- -- A binder which binds its input to an identifier
-    -- --
-    -- | NamedBinder a Ident (Binder a)
+    -- |
+    -- A binder which binds its input to an identifier
+    --
+    | NamedBinder Ident Binder
 
 derive instance eqBinder :: Eq Binder
 derive instance ordBinder :: Ord Binder
@@ -62,4 +62,8 @@ instance isForeignBinder :: IsForeign Binder where
           consName <- readProp 2 x'
           args <- readProp 3 x'
           pure $ ConstructorBinder typeName consName args
+        "NamedBinder" -> do
+          ident <- readIdent value
+          binder <- readProp 2 x'
+          pure $ NamedBinder ident binder
         other -> fail $ ForeignError $ "Unknown binder: " <> other

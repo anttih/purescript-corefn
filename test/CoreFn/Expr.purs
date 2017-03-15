@@ -202,6 +202,7 @@ testExpr = do
   testCaseVarBinder
   testCaseConstructorBinder
   testCaseConstructorBinderArgs
+  testCaseNamedBinder
 
   where
 
@@ -455,6 +456,37 @@ testExpr = do
       let args = [VarBinder (Ident "x"), VarBinder (Ident "y")]
       let constBinder1 = ConstructorBinder typeName (Qualified moduleName (ProperName "Two")) args
       let b = CaseAlternative { binders: [constBinder1], result: (Literal (NumericLiteral (Left 1))) }
+      assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b])
+
+  testCaseNamedBinder = do
+    let description = "Case expression with a named binder"
+
+    let json = """
+      [
+        "Case",
+        [["Var","v"]],
+        [
+          [
+            [
+              [
+                "NamedBinder",
+                "foo",
+                ["ConstructorBinder","Module.Sum","Module.One",[["VarBinder","i"]]]
+              ]
+            ],
+            ["Var","i"]
+          ]
+        ]
+      ]
+    """
+
+    expectSuccess description (readExprJSON json)	\x -> do
+      let moduleName = Just (ModuleName "Module")
+      let typeName = (Qualified moduleName (ProperName "Sum"))
+      let args = [VarBinder (Ident "i")]
+      let constBinder = ConstructorBinder typeName (Qualified moduleName (ProperName "One")) args
+      let namedBinder = NamedBinder (Ident "foo") constBinder
+      let b = CaseAlternative { binders: [namedBinder], result: (Var (Qualified Nothing (Ident "i"))) }
       assertEqual x (Case [Var (Qualified Nothing (Ident "v"))] [b])
 
 
