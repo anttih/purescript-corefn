@@ -448,7 +448,7 @@ testExpr = do
         [
           [
             [
-              ["ConstructorBinder","Module.FooSum","Module.Two",[["VarBinder","x"],["VarBinder","y"]]]
+              ["ConstructorBinder","Module.Foo","Module.Two",[["VarBinder","x"],["VarBinder","y"]]]
             ],
             ["Literal", ["IntLiteral",1]]
           ]
@@ -458,7 +458,7 @@ testExpr = do
 
     expectSuccess description (readExprJSON json)	\x -> do
       let moduleName = Just (ModuleName "Module")
-      let typeName = (Qualified moduleName (ProperName "FooSum"))
+      let typeName = (Qualified moduleName (ProperName "Foo"))
       let args = [VarBinder (Ident "x"), VarBinder (Ident "y")]
       let constBinder1 = ConstructorBinder typeName (Qualified moduleName (ProperName "Two")) args
       let b = CaseAlternative { binders: [constBinder1]
