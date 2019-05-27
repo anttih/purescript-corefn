@@ -68,6 +68,12 @@ spec = describe "FromJSON" do
       """
       isRight m `shouldEqual` true
 
+    it "should parse literals" do
+      let m = runExcept $ moduleFromJSON """
+        {"moduleName":["Example","Main"],"imports":[],"builtWith":"0","modulePath":"src/Example/Main.purs","exports":[],"decls":[{"annotation":{"meta":null,"sourceSpan":{"start":[0,0],"end":[0,0]}},"identifier":"x1","expression":{"annotation":{"meta":null,"sourceSpan":{"start":[0,0],"end":[0,0]}},"value":{"literalType":"StringLiteral","value": [1,2,3]},"type":"Literal"},"bindType":"NonRec"}],"comments":[],"foreign":[]}
+      """
+      isRight m `shouldEqual` true
+
     it "should parse Constructor" do
       let m = runExcept $ moduleFromJSON """
         {"moduleName":["Example","Main"],"imports":[],"builtWith":"0","modulePath":"src/Example/Main.purs","exports":[],"decls":[{"annotation":{"meta":null,"sourceSpan":{"start":[0,0],"end":[0,0]}},"identifier":"constructor","expression":{"constructorName":"Left","annotation":{"meta":null,"sourceSpan":{"start":[0,0],"end":[0,0]}},"typeName":"Either","fieldNames":["value0"],"type":"Constructor"},"bindType":"NonRec"}],"comments":[],"foreign":[]}
